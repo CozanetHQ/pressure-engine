@@ -1,0 +1,65 @@
+name: pressure-collect
+
+on:
+  workflow_dispatch:
+  schedule:
+    # watchdog: re-chains if the self-chained loop ever breaks.
+    # GitHub schedule minimum interval is 5 min; 10 min keeps it gentle.
+    - cron: "*/10 * * * *"
+
+# one collection at a time — no overlapping runs, no concurrent state writes
+concurrency:
+  group: pressure-collect
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run shadow collector
+        env:
+          PAIRS: NEARUSDT,BTCUSDT,ETHUSDT,SOLUSDT,XRPUSDT
+          COLLECT_SECONDS: "60"
+          CYCLE_SEC: "2"
+        run: python3 collect.py
+
+      - name: Persist state + ledgers
+        run: |
+          git config user.name "pressure-bot"
+          git config user.email "pressure-bot@users.noreply.github.com"
+          git add state/ data/ docs/
+          if git diff --cached --quiet; then
+            echo "nothing changed — no commit"
+          else
+            git commit -m "collect: $(date -u '+%Y-%m-%dT%H:%M:%SZ') [skip ci]"
+            git push
+          fi
+
+      - name: Chain the next run
+        if: ${{ always() && github.event_name != 'schedule' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sleep 5
+          gh workflow run pressure-collect.yml --ref "${GITHUB_REF_NAME}"
+          echo "chained next collection run"
+
+      - name: Watchdog self-heal (scheduled runs re-chain too)
+        if: ${{ always() && github.event_name == 'schedule' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sleep 5
+          gh workflow run pressure-collect.yml --ref "${GITHUB_REF_NAME}"
+          echo "watchdog: ensured chain is alive"
