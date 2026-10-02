@@ -76,12 +76,13 @@ def maybe_create(state, sym, sym_name, comp, transition, oi_state, funding_ctx, 
     long = direction == "long"
     sgn = 1.0 if long else -1.0
 
+    # atr is ABSOLUTE (price units) — levels are additive, not multiplicative
     def at(base, atr_mult):
-        return round(base * (1 + sgn * atr_mult * atr), 8)
+        return round(base + sgn * atr_mult * atr, 8)
 
-    retest = round(price * (1 - sgn * RETEST_PULLBACK_ATR * atr), 8)
-    sim_tp = round(retest * (1 + sgn * SIM_TP_ATR * atr), 8)
-    sim_sl = round(retest * (1 - sgn * SIM_SL_ATR * atr), 8)
+    retest = round(price - sgn * RETEST_PULLBACK_ATR * atr, 8)
+    sim_tp = round(retest + sgn * SIM_TP_ATR * atr, 8)
+    sim_sl = round(retest - sgn * SIM_SL_ATR * atr, 8)
     rec = {
         "exp_id": uuid.uuid4().hex[:12],
         "setup_ts": now_ms,

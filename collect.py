@@ -85,8 +85,8 @@ def evaluate_symbol(state, name, sym, candles_1m, now_ms):
         return None, None
     atr = sym["location"]["atr_1m"]
     p60 = price_60s_ago(sym, now_ms)
-    disp_60 = (price - p60) / price if p60 else 0.0
-    disp_60_atr = disp_60 / max(atr, 1e-9)
+    disp_60_abs = (price - p60) if p60 else 0.0
+    disp_60_atr = disp_60_abs / max(atr, 1e-9)   # price units / ATR units
     dz = TAPE.delta_z(sym, now_ms)
     wins = TAPE.window_sums(sym, now_ms)
     cvd_60 = wins["60s"]["delta"]
@@ -96,7 +96,7 @@ def evaluate_symbol(state, name, sym, candles_1m, now_ms):
 
     ctx = {
         "delta_z": dz, "cvd_60": cvd_60, "disp_60_atr": disp_60_atr,
-        "price_slope_60": 1 if disp_60 > 0 else (-1 if disp_60 < 0 else 0),
+        "price_slope_60": 1 if disp_60_abs > 0 else (-1 if disp_60_abs < 0 else 0),
         "oi_state": oi_state, "effort_state": eff_state,
         "flow_status": flow_status, "quality_flags": quality_flags(sym, state, now_ms),
     }
