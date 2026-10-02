@@ -52,7 +52,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           sleep 5
-          gh workflow run pressure-collect.yml --ref "${GITHUB_REF_NAME}"
+          gh workflow run collect.yml --ref "${GITHUB_REF_NAME}"
           echo "chained next collection run"
 
       - name: Watchdog self-heal (scheduled runs re-chain too)
@@ -61,5 +61,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           sleep 5
-          gh workflow run pressure-collect.yml --ref "${GITHUB_REF_NAME}"
+          gh workflow run collect.yml --ref "${GITHUB_REF_NAME}"
           echo "watchdog: ensured chain is alive"
